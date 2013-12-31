@@ -1,9 +1,13 @@
 subdivx-dl
-cli tool - subdivx.com's subtitles downloader
+==========
+cli tool - subtitle downloader for subdivx.com
 
 Downlaads subtitles from http://www.subvix.com/  (spanish)
+
 Searchs movie title, looks up version using distribution detail.
+
 Downloads rar or zip file and extracts content to current dir.
+
 And that's all =)
 
 requirements:
