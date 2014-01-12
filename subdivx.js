@@ -9,8 +9,6 @@ var unzip = require('unzip');
 var $ = require('jquery');
 var _ = require('underscore');
 
-var MAX_PAGES = 5;
-
 function searchShow(show, callback) {
     var parseResponse = function(data) {
         var $dom = $(data);
@@ -37,7 +35,7 @@ function searchShow(show, callback) {
 
     var options = { host: 'subdivx.com', path: '/index.php?buscar='+ encodeURIComponent(show) +'&accion=5&masdesc=&subtitulos=1&realiza_b=1' };
    
-    // TODO: retrieve page
+    // TODO: retrieve more pages until matches
     http.request(options, function(response) {
         var data = ''
         response.on('data', function (chunk) { data += chunk; });
