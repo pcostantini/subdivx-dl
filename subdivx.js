@@ -9,6 +9,55 @@ var unzip = require('unzip');
 var $ = require('jquery');
 var _ = require('underscore');
 
+function downloadSubtitle(show, releaseDetails, outputPath) {
+    searchShowRelease(show, releaseDetails, function(results) {
+        if(!results.length) {
+            console.log('no subs found, try with less details');
+            return;
+        }
+
+        var first = results[0];
+        
+        console.log('Downloading:', first.title);
+        console.log(first.details);
+
+        var url = first.url;
+        var tmp = path.resolve(path.join(outputPath, 'tmp_sub'));
+
+        request(url)
+            .on('end', function() {
+                var type = this.response.headers['content-type'];
+                decompressFor(type)(tmp, outputPath, function() {
+                    // delete
+                    fs.unlink(tmp);
+                });
+            })
+            .pipe(fs.createWriteStream(tmp));
+    });
+}
+
+function searchShowRelease(show, releaseDetails, callback) {
+
+    var and = function(predicates){
+      return function(e){
+        return _.every(predicates, function(p){return p(e)})
+      }
+    };
+
+    var conditions = releaseDetails.map(function(release) {
+        return function(match) {
+            return match.details.indexOf(release) != -1;
+        };
+    });
+
+    var matchsRelease = and(conditions);
+
+    searchShow(show, function(showMatches) {
+        var releaseMatches = showMatches.filter(matchsRelease);
+        callback(releaseMatches);
+    });
+}
+
 function searchShow(show, callback) {
     var parseResponse = function(data) {
         var $dom = $(data);
@@ -46,31 +95,12 @@ function searchShow(show, callback) {
     }).end();
 }
 
-function searchShowRelease(show, releaseDetails, callback) {
-
-    var and = function(predicates){
-      return function(e){
-        return _.every(predicates, function(p){return p(e)})
-      }
-    };
-
-    var conditions = releaseDetails.map(function(release) {
-        return function(match) {
-            return match.details.indexOf(release) != -1;
-        };
-    });
-
-    var matchsRelease = and(conditions);
-
-    searchShow(show, function(showMatches) {
-        var releaseMatches = showMatches.filter(matchsRelease);
-        callback(releaseMatches);
-    });
-}
-
 function decompress_rar(inputPath, outputPath, callback) {
-    var unrar = child_process.spawn('unrar', ['e', '-y', inputPath], { cwd: outputPath });
-    unrar.on('close', callback);
+    child_process.spawn(
+            'unrar',
+            ['e', '-y', inputPath],
+            { cwd: outputPath })
+        .on('close', callback);
 }
 
 function decompress_zip(inputPath, outputPath, callback) {
@@ -89,32 +119,6 @@ function decompressFor(type) {
     throw new Error('Type ('+ type +') not supported');
 }
 
-function downloadSubtitle(show, releaseDetails, outputPath) {
-    searchShowRelease(show, releaseDetails, function(results) {
-        if(!results.length) {
-            console.log('no subs found, try with less details');
-            return;
-        }
-
-        var first = results[0];
-        
-        console.log('Downloading:', first.title);
-        console.log(first.details);
-
-        var url = first.url;
-        var tmp = path.resolve(path.join(outputPath, 'compressed'));
-
-        request(url)
-            .on('end', function() {
-                var type = this.response.headers['content-type'];
-                decompressFor(type)(tmp, outputPath, function() {
-                    // delete
-                    fs.unlink(tmp);
-                });
-            })
-            .pipe(fs.createWriteStream(tmp));
-    });
-}
 
 exports.searchShow = searchShow;
 exports.searchShowRelease = searchShowRelease;
