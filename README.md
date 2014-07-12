@@ -30,7 +30,7 @@ And that's all =)
 
 create a symbolic link into user's local bins
 
-	sudo ln -s index.js /usr/local/bin/subdivx-dx
+	sudo ln -s $PWD/index.js /usr/local/bin/subdivx-dl
 
 *TODO*
 
