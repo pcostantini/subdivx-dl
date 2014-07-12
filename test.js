@@ -4,15 +4,15 @@
 var subdivx = require('./subdivx');
 
 // tests
-// subdivx.downloadSubtitle(
-// 	'the big bang theory s07e06',
-// 	['dimension', 'argenteam'],
-// 	'./tmp/');
+subdivx.downloadSubtitle(
+    'the big bang theory s07e06',
+    ['dimension', 'argenteam'],
+    './');
 
-subdivx.searchShow('the wolverine', function (results) {
+subdivx.searchShow('halt and catch fire', function (results) {
     console.log('searchShow().response:', {
-    	lengh: results.length,
-    	data: results
+        lengh: results.length,
+        data: results
     });
 });
 

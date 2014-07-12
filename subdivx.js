@@ -6,7 +6,7 @@ var http = require('http');
 var request = require('request');
 var fs = require('fs');
 var unzip = require('unzip');
-var $ = require('jquery');
+var jsdom = require('jsdom').jsdom;
 var _ = require('underscore');
 
 function downloadSubtitle(show, releaseDetails, outputPath) {
@@ -23,16 +23,16 @@ function downloadSubtitle(show, releaseDetails, outputPath) {
 
         var url = first.url;
         var tmp = path.resolve(path.join(outputPath, 'tmp_sub'));
+        var tmpStream = fs.createWriteStream(tmp);
 
         request(url)
             .on('end', function() {
                 var type = this.response.headers['content-type'];
                 decompressFor(type)(tmp, outputPath, function() {
-                    // delete
-                    fs.unlink(tmp);
+                    fs.unlink(tmp); // delete
                 });
             })
-            .pipe(fs.createWriteStream(tmp));
+            .pipe(tmpStream);
     });
 }
 
@@ -59,27 +59,50 @@ function searchShowRelease(show, releaseDetails, callback) {
 }
 
 function searchShow(show, callback) {
-    var parseResponse = function(data) {
-        var $dom = $(data);
-        var $items = $dom.find('#menu_detalle_buscador').toArray();
-        return $items.map(function(el) {
-            var $title = $(el);
-            var $details = $title.next();
-            var downloads = $details.find('#buscador_detalle_sub_datos')
-                                    .contents().filter(
-                                        function() {
-                                            return this.nodeType === 3;
-                                        })
-                                    .get(0).data;
-            downloads = parseInt($.trim(downloads.replace('\g,', '')), 10);
+    var parseResponse = function(html) {
+
+        html = html.substring(
+            html.indexOf('<div class="pagination">'),
+            html.lastIndexOf('<div class="pagination">'));
+        
+        html = html.replace(/ id=/g, ' div class=');
+
+        var dom = jsdom(html, null, {
+            FetchExternalResources: false,
+            ProcessExternalResources: false,
+            MutationEvents: false,
+            QuerySelector: true
+        }).createWindow();
+
+        var items = dom.document.getElementsByClassName('menu_detalle_buscador');
+
+        var results = _.toArray(items).map(function(el) {
+
+            var titleNode = el.getElementsByTagName('a')[0];
+            var title = titleNode.firstChild.nodeValue.replace('Subtitul de', '');
+
+            var infoNode = el.nextSibling;
+
+            var detailsNode = infoNode.getElementsByClassName('buscador_detalle_sub')[0];
+            var details = detailsNode.firstChild.nodeValue;
+
+            var downloadsNode = infoNode.getElementsByClassName('buscador_detalle_sub_datos')[0].childNodes[1];
+            var downloads = parseInt(downloadsNode.nodeValue.replace('\g ', ''), 10);
+
+            var urlNodes = infoNode.getElementsByClassName('buscador_detalle_sub_datos')[0]
+                .getElementsByTagName("a");
+            var url = _.last(urlNodes).attributes["href"].value;
 
             return {
-                title: $title.find('a').text(),
+                title: title,
+                details: details,
                 downloads: downloads,
-                details: $details.find('#buscador_detalle_sub').text(),
-                url: $details.find('#buscador_detalle_sub_datos a').last().attr('href')
+                url: url
             };
         });
+
+        dom.close();
+        return results;
     };
 
     var options = { host: 'subdivx.com', path: '/index.php?buscar='+ encodeURIComponent(show) +'&accion=5&masdesc=&subtitulos=1&realiza_b=1' };
@@ -118,7 +141,6 @@ function decompressFor(type) {
 
     throw new Error('Type ('+ type +') not supported');
 }
-
 
 exports.searchShow = searchShow;
 exports.searchShowRelease = searchShowRelease;

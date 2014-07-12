@@ -8,11 +8,11 @@
     "srt",
     "subtitle"
   ],
-  "dependencies" : {
-    "underscore":  "*",
-    "jquery"    :  "1.7.3",
-    "request"   :  "*",
-    "unzip"     :  "*"
+  "dependencies": {
+    "jsdom": "^0.11.1",
+    "request": "*",
+    "underscore": "*",
+    "unzip": "*"
   },
   "license": "MIT",
   "engines": {
