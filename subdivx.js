@@ -6,8 +6,9 @@ var http = require('http');
 var request = require('request');
 var fs = require('fs');
 var unzip = require('unzip');
-var jsdom = require('jsdom').jsdom;
 var _ = require('underscore');
+
+// todo: virtual dom
 
 function downloadSubtitle(show, releaseDetails, outputPath) {
     searchShowRelease(show, releaseDetails, function(results) {
@@ -16,7 +17,8 @@ function downloadSubtitle(show, releaseDetails, outputPath) {
             return;
         }
 
-        var first = results[0];
+        // todo: give options if more than one match? 
+        var first = _.first(results);
         
         console.log('Downloading:', first.title);
         console.log(first.details);
@@ -59,51 +61,56 @@ function searchShowRelease(show, releaseDetails, callback) {
 }
 
 function searchShow(show, callback) {
+
     var parseResponse = function(html) {
-
-        html = html.substring(
-            html.indexOf('<div class="pagination">'),
-            html.lastIndexOf('<div class="pagination">'));
-        
-        html = html.replace(/ id=/g, ' div class=');
-
-        var dom = jsdom(html, null, {
-            FetchExternalResources: false,
-            ProcessExternalResources: false,
-            MutationEvents: false,
-            QuerySelector: true
-        }).createWindow();
-
-        var items = dom.document.getElementsByClassName('menu_detalle_buscador');
-
-        var results = _.toArray(items).map(function(el) {
-
-            var titleNode = el.getElementsByTagName('a')[0];
-            var title = titleNode.firstChild.nodeValue.replace('Subtitul de', '');
-
-            var infoNode = el.nextSibling;
-
-            var detailsNode = infoNode.getElementsByClassName('buscador_detalle_sub')[0];
-            var details = detailsNode.firstChild.nodeValue;
-
-            var downloadsNode = infoNode.getElementsByClassName('buscador_detalle_sub_datos')[0].childNodes[1];
-            var downloads = parseInt(downloadsNode.nodeValue.replace('\g ', ''), 10);
-
-            var urlNodes = infoNode.getElementsByClassName('buscador_detalle_sub_datos')[0]
-                .getElementsByTagName("a");
-            var url = _.last(urlNodes).attributes["href"].value;
-
-            return {
+        /* returns {
                 title: title,
                 details: details,
                 downloads: downloads,
                 url: url
-            };
-        });
+            } */
 
-        dom.close();
-        return results;
+        html = html.substring(
+            html.indexOf('<div class="pagination">'),
+            html.lastIndexOf('<div class="pagination">'));
+
+        var frags = html.split('menu_detalle_buscador');
+        var downloadLinkAnchor = '<a rel="nofollow" target="new" href="';
+        var downloadLinkAnchorEnd = '"><img src="bajar_sub.gif"';
+        var fragCountStart = 'Downloads:</b> ';
+        var fragCountEnd = ' <b>Cds:</b>';
+
+    	var subtitles = frags/*.map(function(s) {
+                console.log('buscador_detalle_sub_datos', s)
+    		  return s.split('buscador_detalle_sub_datos')[1];
+    	    })*/
+            .filter(function(s) { return s.split('buscador_detalle_sub_datos')[1] !== undefined; })
+            .map(function(s) {
+                /* ><div id="menu_titulo_buscador"><a class="titulo_menu_izq" href="http://www.subdivx.com/X6XNDU0MTQ0X-legend-2015.html">Subtitulo de Legend (2015)</a></div><img src="img/calif5.gif" class="detalle_calif" name="detalle_calif"></div><div id="buscador_detalle">
+<div id="buscador_detalle_sub">los de mmmm06, tomados de metallgott  recortadas l�neas a 40  quitados algunos acentos donde no iban y agregados en otras que le faltaban  son para la versi�n    legend 2015 1080p hdrip x264 ac3-evo
+gracias a los traductores!!</div><div id="buscador_detalle_sub_datos"><b>Downloads:</b> 31 <b>Cds:</b> 1 <b>Comentarios:</b> 0 <b>Formato:</b> SubRip <b>Subido por:</b> <a class="link1" href="http://www.subdivx.com/X9X1356919">juancito78</a> <img src="http://www.subdivx.com/pais/1.gif" width="16" height="12"> <b>el</b> 20/01/2016  <a rel="nofollow" target="new" href="http://www.subdivx.com/bajar.php?id=454144&u=8"><img src="bajar_sub.gif" border="0"></a></div></div><div id="*/
+
+                var downloads = tag(s, fragCountStart, fragCountEnd);
+                var downloadUrl = tag(s, downloadLinkAnchor, downloadLinkAnchorEnd);
+                var title = tag(s, '">Subtitulo de ', '</a></div><img ');
+                var details = tag(s, '<div id="buscador_detalle_sub">', '</div><div id="buscador_detalle_sub_datos">');
+                var downloads = parseInt(tag(s, '<b>Downloads:</b> ', ' <b>Cds:</b>'), 10) || 0;
+                return {
+                    title: title,
+                    details: details,
+                    downloads: downloads,
+                    url: downloadUrl
+                };
+            });
+
+        return subtitles;
     };
+
+    function tag(s, tagStart, tarEnd) {
+        return s.substring(
+                    s.indexOf(tagStart) + tagStart.length,
+                    s.indexOf(tarEnd));
+    }
 
     var options = { host: 'subdivx.com', path: '/index.php?buscar='+ encodeURIComponent(show) +'&accion=5&masdesc=&subtitulos=1&realiza_b=1' };
    
