@@ -15,6 +15,7 @@ And that's all =)
 
  * nodejs
  * an internet connection
+ * unrar (non-free)
 
 *Usage*
 
