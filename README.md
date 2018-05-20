@@ -14,8 +14,8 @@ And that's all =)
 *Requirements*
 
  * nodejs
+ * unrar (best non-free - https://raspberrypi.stackexchange.com/questions/3617/how-to-install-unrar-nonfree)
  * an internet connection
- * unrar (non-free)
 
 *Usage*
 
@@ -36,8 +36,8 @@ create a symbolic link into user's local bins
 
 *TODO*
 
- * support paging - paged responses
- * detect rar on unzip missing
+ * retrieve more pages (currently only works on first page)
+ * detect rar or unzip missing
 
 *Nice to have*
 
