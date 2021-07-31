@@ -12,19 +12,21 @@ var _ = require('underscore');
 // agent.maxSockets = 1;
 http.globalAgent.keepAlive = true
 
+var logEnabled = true;
+var log = logEnabled
+    ? (o1, o2) => console.log(o1, o2)
+    : () => { /* */ };
 
 function downloadSubtitle(show, releaseDetails, outputPath) {
     searchShowRelease(show, releaseDetails, function (results) {
         if (!results.length) {
-            console.log('no subs found, try with less details');
+            log('no subs found, try with less details');
             return;
         }
 
         // TODO: give options if more than one match? 
         var first = _.first(results);
 
-        console.log('Downloading:', first.title);
-        console.log(first.details);
         // Download Page to obtain download link
         retriveDownloadLink(first.subtitleUrl, function (url) {
 
@@ -34,15 +36,68 @@ function downloadSubtitle(show, releaseDetails, outputPath) {
                 return;
             }
 
-        request(url)
-            .on('end', function () {
-                var type = this.response.headers['content-type'];
-                decompressFor(type)(tmp, outputPath, function () {
-                    fs.unlink(tmp); // delete
-                    console.log(tmp)
+            log('First subtitle:', first);
+
+
+            // HACK: download file with puppet
+            // reload page so cookies are re-sent
+            const puppeteer = require('puppeteer');
+
+            (async () => {
+
+                var browser = await puppeteer.launch({
+                    headless: true,
+                    executablePath: '/opt/google/chrome/chrome' //await chromium.executablePath
                 });
-            })
-            .pipe(tmpStream);
+
+
+                try {
+                    var page = await browser.newPage();
+
+                    var detectedContentType;
+                    var detectedDownloadPath;
+                    var tempDownloadPath = '/tmp/subdivx-tmp/'
+
+                    page.on('response', async (response) => {
+                        // save last detected content download, content type and assume detected download path
+                        detectedContentType = response.headers()['content-type'];
+                        var url = response.request().url();
+                        var filename = path.basename(url);
+                        detectedDownloadPath = path.resolve(path.join(tempDownloadPath, filename));
+                    });
+
+                    page.on('pageerror', () => { });
+
+                    await page._client.send('Page.setDownloadBehavior', {
+                        behavior: 'allow',
+                        downloadPath: tempDownloadPath
+                    });
+
+
+                    await page._client.on('Page.downloadProgress', async (e) => {
+                        // detect a successfull download and then continue...
+                        if (e.state !== 'completed') return;
+
+                        await browser.close();
+
+                        console.log('Decompressing ', detectedDownloadPath);
+                        var decompressFunction = decompressFor(detectedContentType);
+                        decompressFunction(detectedDownloadPath, outputPath, function () {
+                            fs.unlink(detectedDownloadPath, function () { }); // delete
+                        });
+                    });
+
+                    await page.goto(url);
+                    await page.goto(url);
+
+                } catch (e) {
+                    console.error(e);
+                }
+
+            })()
+                .then(() => console.log('Done?'))
+                .catch(console.error);
+        });
     });
 }
 
