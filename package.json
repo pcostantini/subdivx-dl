@@ -1,7 +1,7 @@
 {
   "name": "subdivx-dl",
   "preferGlobal": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "author": "Pablo Costantini <luminicbox@gmail.com>",
   "description": "a subdivx subtitle downloader and extractor. Search for a show or movie (on title name) + any release information to match the proper subtitle",
   "description-es": "descarga subtitulos de subdivx desde la consola. nombre de show o pelicula + alguna informacion/detalle del release.",
